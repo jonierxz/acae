@@ -1,18 +1,14 @@
-FROM python:3.10
+FROM python:3.10-alpine
 
-# Instalar dependencias del sistema necesarias para compilar dlib y opencv
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        build-essential \
-        cmake \
-        libopenblas-dev \
-        liblapack-dev \
-        libx11-dev \
-        libgtk2.0-dev \
-        libboost-all-dev \
-        wget && \
-    rm -rf /var/lib/apt/lists/*
-
+# Instalar dependencias del sistema necesarias para compilar dlib, face-recognition, etc.
+RUN apk update && apk add --no-cache \
+    build-base \
+    cmake \
+    boost-dev \
+    linux-headers \
+    libffi-dev \
+    openssl-dev \
+    python3-dev
 # Establecer el directorio de trabajo
 WORKDIR /app
 
