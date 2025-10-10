@@ -87,7 +87,7 @@ h1 {
 }
 
 .choice-btn:hover {
-    border-color: #007bff;
+    border-color: #2aad1e;
     background-color: #f8f9fa;
     transform: translateY(-5px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);

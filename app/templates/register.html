@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -6,15 +7,18 @@
 
     <!-- CSS con Flask -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
-
-
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/logo-sena-verde-complementario-png-2022.png') }}">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
-    
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" 
+            xintegrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" 
+            xintegrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous">
+    </script>
 </head>
 <body>
     <div class="login-container">
@@ -24,6 +28,8 @@
         <h1>Iniciar Sesión</h1>
         <p class="subtitle">Registrar un nuevo Empleado</p>
 
+        <!-- Formulario tradicional (NO USADO PARA EL REGISTRO FACIAL FINAL) -->
+        <!-- Se mantiene para la captura de campos -->
         <form id="register-form" method="POST" action="{{ url_for('user.register') }}">
             <div class="input-group">
                 <label for="username">Usuario</label>
@@ -53,8 +59,130 @@
                     <option value="Noche">Noche</option>
                 </select>
             </div>
-            <button type="submit">Registrar</button>
+            <button type="submit" id="btn-registro-manual">Registrar</button>
         </form>
+
+        <hr>
+
+        <!-- Bloque de reconocimiento facial -->
+        <h3>Registro Facial</h3>
+        <p id="message-status" class="text-center" style="color: red;"></p>
+        <button type="button" onclick="abrirCamara()">Activar Cámara</button>
+        <video id="video" width="320" height="240" autoplay style="display:none; margin-top: 10px;"></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+        <button type="button" onclick="capturarYEnviar()" style="display:none;" id="btn-captura">
+            Capturar y Guardar Rostro
+        </button>
     </div>
+
+    <script>
+        const messageStatus = document.getElementById('message-status');
+
+        function showMessage(msg, isError = false) {
+            messageStatus.textContent = msg;
+            messageStatus.style.color = isError ? 'red' : 'green';
+        }
+
+        async function abrirCamara() {
+            const video = document.getElementById('video');
+            const btnCaptura = document.getElementById('btn-captura');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.style.display = "block";
+                btnCaptura.style.display = "inline-block";
+                showMessage("Cámara activa. ¡Lista para la captura!", false);
+            } catch (error) {
+                console.error("No se pudo acceder a la cámara:", error);
+                showMessage("Error: Debes permitir el acceso a la cámara para registrar el rostro.", true);
+            }
+        }
+
+        async function capturarYEnviar() {
+            const canvas = document.getElementById('canvas');
+            const video = document.getElementById('video');
+
+            // 1. Recuperar todos los valores requeridos
+            const documentValue = document.getElementById('document').value;
+            const usernameValue = document.getElementById('username').value;
+            const passwordValue = document.getElementById('password').value;
+            const phoneValue = document.getElementById('phone').value;
+            const emailValue = document.getElementById('email').value;
+            const horarioValue = document.getElementById('horario').value;
+
+            if (!documentValue || !usernameValue || !passwordValue || !phoneValue || !emailValue || !horarioValue) {
+                showMessage("Campos incompletos: Debes completar todos los campos del formulario antes de capturar.", true);
+                return;
+            }
+
+            showMessage("⏳ Capturando imagen y enviando datos...", false);
+
+            // 2. Captura la imagen del video
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // 3. Convierte a blob y envía al backend
+            canvas.toBlob(async (blob) => {
+                if (!blob) {
+                    showMessage("Error en la captura de la imagen. Asegúrate de que la cámara esté activa.", true);
+                    return;
+                }
+
+                const formData = new FormData();
+                // 🚨 CLAVE: Los nombres deben coincidir con request.form.get() y request.files['image'] en face_routes.py
+                formData.append("image", blob, 'face_capture.jpeg'); // <-- Coincide con request.files['image']
+                formData.append("document", documentValue);      // <-- Coincide con empleado_id = request.form.get('document')
+                formData.append("username", usernameValue);      // <-- Coincide con nombre = request.form.get('username')
+                formData.append("password", passwordValue);      // <-- Coincide con password = request.form.get('password')
+                formData.append("phone", phoneValue);            // <-- Coincide con phoneUser = request.form.get('phone')
+                formData.append("email", emailValue);            // <-- Coincide con emailUser = request.form.get('email')
+                formData.append("horario", horarioValue);        // <-- Coincide con horario = request.form.get('horario')
+
+                try {
+                    const response = await fetch("/face/register_face", {
+                        method: "POST",
+                        body: formData
+                        // No Content-Type aquí; FormData lo maneja automáticamente
+                    });
+
+                    const result = await response.json().catch(error => {
+                        console.error("Error al parsear la respuesta como JSON. El servidor pudo devolver texto o HTML.", error);
+                        showMessage("Error de servidor (respuesta no JSON). Revisa el log de Flask.", true);
+                        return { success: false, error: "Error de servidor (respuesta no JSON)." };
+                    });
+                    
+                    if (response.status === 400) {
+                        // Manejo explícito del error 400 que podría venir por falta de campos o imagen.
+                        showMessage(`Error 400: ${result.error || 'Solicitud mal formada. Verifique campos.'}`, true);
+                        return;
+                    }
+                    
+                    if (result.success) {
+                        showMessage("Registro Facial y de Empleado exitoso. Redireccionando...", false); 
+                        setTimeout(() => {
+                             // Redirigir después de un éxito
+                            window.location.href = '/login'; 
+                        }, 1500);
+                    } else {
+                        // 500 o error lógico
+                        console.error("Error en el registro: " + result.error);
+                        showMessage(`Error al guardar: ${result.error}`, true);
+                    }
+                } catch (err) {
+                    console.error("Error de conexión (el servidor no responde o URL incorrecta):", err);
+                    showMessage("Error de conexión. Verifique que Flask esté corriendo y la URL sea correcta.", true);
+                }
+            }, "image/jpeg");
+        }
+
+        // Previene el envío del formulario tradicional para usar solo la captura facial
+        document.getElementById('register-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Si el usuario presiona el botón "Registrar" del formulario sin usar la cámara,
+            // puedes optar por hacer algo aquí (ej. mostrar un mensaje o simplemente no hacer nada)
+            showMessage("Por favor, use el botón 'Capturar y Guardar Rostro' para registrar el empleado con su biometría.", true);
+        });
+    </script>
 </body>
 </html>

@@ -1,8 +1,13 @@
 from app import create_app, db
 import os, hashlib
+from app.routes.face_routes import face_bp
+
 
 # Crear la aplicación
 app = create_app()
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+#app.register_blueprint(face_bp)
 
 def crear_tablas_y_usuarios():
     """Crea las tablas y los usuarios por defecto si no existen"""

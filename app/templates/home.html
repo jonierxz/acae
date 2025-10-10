@@ -3,9 +3,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro de Asistencia</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/logo-sena-verde-complementario-png-2022.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}?v=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 </head>
 <body>
@@ -18,22 +19,47 @@
     </nav>
         <h1>Seleccione el método de registro</h1>
         <div class="button-container">
+            <!-- BOTÓN QUE DISPARA LA CÁMARA PARA EL REGISTRO FACIAL -->
             <button id="qr-btn" class="choice-btn">
-                <img src="{{ url_for('static', filename='img/qr-code-icon.png') }}" alt="Icono de Código QR">
-                <span>Código QR</span>
+                <img src="{{ url_for('static', filename='img/face-recognition_3924465.png') }}" alt="Icono de Código QR">
+                <span>Registro Facial</span>
             </button>
             <button id="doc-btn" class="choice-btn">
-                <img src="{{ url_for('static', filename='img/id-card-icon.png') }}" alt="Icono de Documento">
+                <img src="{{ url_for('static', filename='img/id-card_9506680.png') }}" alt="Icono de Documento">
                 <span>Documento de Identidad</span>
             </button>
         </div>
         <div id="input-container"></div>
     </div>
+
+    <!-- 
+    
+    INTERFAZ DE CÁMARA (REGISTRO FACIAL)
+    -->
+    <div id="camera-container" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 1000; justify-content: center; align-items: center; flex-direction: column;">
+        
+        <div class="camera-title-bar" style="width: 90%; max-width: 500px; display: flex; justify-content: space-between; align-items: center; padding: 10px; color: white;">
+            <h2 style="font-size: 1.5rem;">Registro de Asistencia Facial</h2>
+            <button id="close-camera-btn" style="background: none; border: none; color: white; font-size: 2rem; cursor: pointer;">&times;</button>
+        </div>
+        
+        <!-- Stream de Video de la Cámara -->
+        <video id="video-stream" width="640" height="480" autoplay style="width: 90%; max-width: 500px; height: auto; border-radius: 8px; box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);"></video>
+        
+        <!-- Canvas oculto para la captura -->
+        <canvas id="photo-canvas" width="640" height="480" style="display: none;"></canvas>
+        
+        <button id="capture-face-btn" class="main-capture-btn" disabled style="margin-top: 20px; padding: 12px 25px; font-size: 1.1rem; border-radius: 50px; background-color: #4CAF50; color: white; border: none; cursor: pointer; transition: background-color 0.3s;">Capturar Rostro</button>
+        
+        <p id="status-message" style="color: white; margin-top: 15px; font-weight: bold; text-align: center; padding: 0 20px;">Presione "Capturar Rostro" para registrar su asistencia.</p>
+    </div>
+    <!-- FIN INTERFAZ CÁMARA -->
 </body>
 <script>
 let inputVisible = false;
 
 document.getElementById('doc-btn').addEventListener('click', function() {
+    // Lógica existente para el registro por documento
     const container = document.getElementById('input-container');
     if (!inputVisible) {
         container.innerHTML = `
@@ -49,7 +75,8 @@ document.getElementById('doc-btn').addEventListener('click', function() {
         document.getElementById('ingreso-btn').addEventListener('click', async function() {
             const documento = document.getElementById('documento-input').value.trim();
             if (!documento) {
-                alert('⚠️ Por favor ingrese su documento.');
+                // Reemplazando alert() por una alternativa más amigable o modal (aunque aquí se usa alert por brevedad)
+                alert('Por favor ingrese su documento.');
                 return;
             }
             
@@ -62,6 +89,7 @@ document.getElementById('doc-btn').addEventListener('click', function() {
 
                 const data = await res.json();
 
+                // Manejo de retardo y motivo (usando prompt y alert)
                 if (!res.ok && data.message && data.message.includes("motivo")) {
                     const motivo = prompt(data.message);
                     if (motivo) {
@@ -78,7 +106,7 @@ document.getElementById('doc-btn').addEventListener('click', function() {
                 }
             } catch (error) {
                 console.error("Error en la petición:", error);
-                alert("❌ Error de conexión con el servidor.");
+                alert("Error de conexión con el servidor.");
             }
         });
     } else {
@@ -86,5 +114,160 @@ document.getElementById('doc-btn').addEventListener('click', function() {
         inputVisible = false;
     }
 });
+
+
+// ======================================================================
+// LÓGICA DE REGISTRO FACIAL (QR BUTTON)
+// ======================================================================
+
+// 1. Elementos del DOM para la cámara
+const qrFeatureBox = document.getElementById('qr-btn'); // Cambiado de 'qr-feature-box' a 'qr-btn'
+const cameraContainer = document.getElementById('camera-container');
+const videoStream = document.getElementById('video-stream');
+const photoCanvas = document.getElementById('photo-canvas');
+const captureBtn = document.getElementById('capture-face-btn');
+const closeBtn = document.getElementById('close-camera-btn');
+const statusMessage = document.getElementById('status-message');
+
+const ctx = photoCanvas.getContext('2d');
+let stream = null; 
+
+/** Abre la cámara y la muestra */
+async function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        statusMessage.textContent = 'ERROR: Su navegador no soporta la API de la cámara.';
+        return;
+    }
+
+    // Ocultar la entrada de documento si está visible
+    document.getElementById('input-container').innerHTML = '';
+    inputVisible = false;
+    
+    try {
+        statusMessage.textContent = 'Cargando cámara...';
+        // Pide acceso a la cámara (usando la cámara frontal si es posible)
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'user' }, 
+            audio: false 
+        });
+        
+        videoStream.srcObject = stream;
+        
+        // Esperar un momento para que el video se cargue y obtener dimensiones reales
+        videoStream.onloadedmetadata = () => {
+            cameraContainer.style.display = 'flex'; // Mostrar contenedor
+            captureBtn.disabled = false; // Habilitar el botón
+            statusMessage.textContent = 'Cámara lista. Por favor, mire a la cámara.';
+        };
+        
+    } catch (error) {
+        console.error('Error al acceder a la cámara:', error);
+        statusMessage.textContent = 'ERROR: No se pudo acceder a la cámara. Asegúrese de dar permisos.';
+    }
+}
+
+/** Detiene la cámara y la oculta */
+function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+    stream = null;
+    cameraContainer.style.display = 'none';
+    videoStream.srcObject = null;
+    statusMessage.textContent = '';
+    captureBtn.disabled = true;
+    statusMessage.style.color = 'white'; // Resetear color
+}
+
+/** Captura un frame del video, lo dibuja en el canvas y lo convierte a Blob */
+function capturePhoto() {
+    // Asegura que el canvas y el video tengan las mismas dimensiones
+    photoCanvas.width = videoStream.videoWidth;
+    photoCanvas.height = videoStream.videoHeight;
+    
+    // Dibuja el frame actual del video en el canvas
+    ctx.drawImage(videoStream, 0, 0, photoCanvas.width, photoCanvas.height);
+    
+    // Convierte la imagen del canvas a un Blob (archivo binario)
+    return new Promise((resolve, reject) => {
+        // Usamos image/jpeg para un tamaño de archivo más pequeño
+        photoCanvas.toBlob(blob => {
+            if (blob) {
+                resolve(blob);
+            } else {
+                reject(new Error("Error al capturar la imagen en el canvas."));
+            }
+        }, 'image/jpeg', 0.8); // Calidad 80%
+    });
+}
+
+/** Envía el Blob de la imagen al servidor para el registro de asistencia */
+async function sendForAttendance(imageBlob) {
+    statusMessage.textContent = 'Enviando imagen para reconocimiento...';
+    captureBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('image', imageBlob, 'capture.jpg');
+
+    try {
+        // La ruta que creamos en face_routes.py
+        const response = await fetch('/face/check_attendance', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Éxito: Entrada o Salida registrada
+            const action = result.event_to_register === 'IN' ? 'Entrada' : 'Salida';
+            statusMessage.style.color = '#4CAF50';
+            statusMessage.textContent = `${result.message}`;
+            
+            // Usamos alert temporalmente
+            setTimeout(() => {
+                alert(`Registro Facial Exitoso: ${action} completada. Mensaje del servidor: ${result.message}`);
+                stopCamera(); 
+            }, 100); 
+            
+        } else {
+            // Falla: Rostro no reconocido o error del servidor
+            statusMessage.style.color = '#FF5252';
+            statusMessage.textContent = `Fallo en el registro: ${result.error}`;
+            captureBtn.disabled = false; 
+            alert(`Error en el registro facial: ${result.error}`);
+        }
+
+    } catch (error) {
+        console.error('Error de red o servidor:', error);
+        statusMessage.style.color = '#FF5252';
+        statusMessage.textContent = 'Error de conexión con el servidor. Verifique la consola para detalles.';
+        captureBtn.disabled = false;
+    }
+}
+
+// 2. Manejo de Eventos del Botón Facial
+qrFeatureBox.addEventListener('click', () => {
+    // Cuando se presiona el botón "Registro Facial", inicia la cámara
+    startCamera();
+});
+
+closeBtn.addEventListener('click', stopCamera);
+
+captureBtn.addEventListener('click', async () => {
+    try {
+        captureBtn.disabled = true; 
+        statusMessage.textContent = 'Capturando...';
+        const imageBlob = await capturePhoto();
+        await sendForAttendance(imageBlob);
+    } catch (error) {
+        console.error(error);
+        statusMessage.style.color = '#FF5252';
+        statusMessage.textContent = 'Error al procesar la captura. Intente de nuevo.';
+        captureBtn.disabled = false;
+    }
+});
+
+// Nota: El archivo home.css necesita estilos para centrar correctamente el modal.
 </script>
 </html>
