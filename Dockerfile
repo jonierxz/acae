@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libpng-dev \
     liblapack-dev \
-    libatlas-base-dev \
+    libblas-dev \
     libgtk2.0-dev \
     pkg-config \
     python3-dev \
