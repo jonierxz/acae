@@ -1,6 +1,5 @@
 # ----------------------------------------------------------------------
 # FASE 1: BUILDER - Para compilar dependencias complejas (dlib, opencv)
-# Usamos 'bullseye' para evitar los errores 404 de 'buster'
 # ----------------------------------------------------------------------
 FROM python:3.10-bullseye AS builder
 
@@ -8,7 +7,6 @@ FROM python:3.10-bullseye AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Instalar dependencias del sistema necesarias para dlib, face-recognition y opencv-python
-# ¡Ahora apt-get funcionará!
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -29,8 +27,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /install
 COPY requirements.txt .
 
-# Instalar dependencias de Python.
-# Separamos la instalación de los paquetes complejos y aumentamos el timeout
+# Instalar dependencias de Python. Aumentamos el timeout y separamos la instalación.
 RUN pip install --default-timeout=360 --no-cache-dir \
     dlib==19.24.2 \
     face-recognition==1.3.0 \
@@ -40,9 +37,9 @@ RUN pip install --default-timeout=360 --no-cache-dir \
 
 # ----------------------------------------------------------------------
 # FASE 2: FINAL - Imagen de Producción (ligera)
-# Usamos 'bullseye-slim' para mantener el tamaño de la imagen pequeño.
+# *** Etiqueta corregida a python:3.10-slim ***
 # ----------------------------------------------------------------------
-FROM python:3.10-bullseye-slim AS final
+FROM python:3.10-slim AS final
 
 # Copiar las librerías compiladas desde la fase 'builder'
 COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
