@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgtk2.0-dev \
     libgomp1 \
     libatlas-base-dev \
-    libboost-python3.10-dev \
+    # ELIMINAMOS ESTE PAQUETE PROBLEMÁTICO: libboost-python3.10-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Crear directorio de trabajo y copiar requirements
@@ -30,7 +30,6 @@ WORKDIR /install
 COPY requirements.txt .
 
 # 1. Instalar dlib y sus dependencias críticas *SOLAS* en una capa.
-# Usamos --prefer-binary para intentar descargar una rueda precompilada (wheel) y evitar la compilación local.
 RUN pip install --default-timeout=600 --no-cache-dir --prefer-binary \
     dlib==19.24.4 \
     face-recognition-models==0.3.0
@@ -42,7 +41,7 @@ RUN pip install --default-timeout=360 --no-cache-dir \
     && pip install --default-timeout=360 --no-cache-dir -r requirements.txt
 
 # ----------------------------------------------------------------------
-# FASE 2: PRODUCCIÓN (FINAL)
+# FASE 2: PRODUCCIÓN (FINAL) - Mantenemos la corrección de runtime
 # ----------------------------------------------------------------------
 FROM python:3.10-slim AS final
 
