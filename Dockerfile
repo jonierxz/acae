@@ -1,16 +1,15 @@
-# ----------------------------------------------------------------------
-# FASE 1: BUILDER - Para compilar dependencias complejas (dlib, opencv)
-# ----------------------------------------------------------------------
+
 FROM python:3.10-bullseye AS builder
 
-# Evitar prompts interactivos
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Instalar dependencias del sistema necesarias para dlib, face-recognition y opencv-python
+# Instalar dependencias del sistema necesarias para dlib, face-recognition y opencv-python.
+# Se añaden libboost-python-dev (crucial para compilar dlib) y libgomp1 (para rendimiento de OpenCV).
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     libboost-all-dev \
+    libboost-python-dev \
     libx11-dev \
     libjpeg-dev \
     libpng-dev \
@@ -21,13 +20,14 @@ RUN apt-get update && apt-get install -y \
     libsm6 \
     libxext6 \
     libgtk2.0-dev \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Crear directorio de trabajo y copiar requirements
 WORKDIR /install
 COPY requirements.txt .
 
-# Instalar dependencias de Python. Aumentamos el timeout y separamos la instalación.
+# Instalar dependencias de Python.
 RUN pip install --default-timeout=360 --no-cache-dir \
     dlib==19.24.2 \
     face-recognition==1.3.0 \
@@ -37,20 +37,22 @@ RUN pip install --default-timeout=360 --no-cache-dir \
 
 # ----------------------------------------------------------------------
 # FASE 2: FINAL - Imagen de Producción (ligera)
-# *** Etiqueta corregida a python:3.10-slim ***
 # ----------------------------------------------------------------------
 FROM python:3.10-slim AS final
 
 # Copiar las librerías compiladas desde la fase 'builder'
 COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
 
-# Instalar las librerías mínimas necesarias en tiempo de ejecución
-RUN apt-get update && apt-get install -y \
+# Instalar las librerías mínimas necesarias en tiempo de ejecución.
+# Se añade libgomp1 y la librería de ejecución de boost-python.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
     libboost-all-dev \
+    libboost-python3.10 \
     libglib2.0-0 \
     libssl-dev \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Crear directorio de trabajo de la app
