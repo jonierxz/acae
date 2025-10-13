@@ -27,11 +27,14 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /install
 COPY requirements.txt .
 
-# Instalar dependencias de Python.
-RUN pip install --default-timeout=360 --no-cache-dir \
+# 1. Instalar dlib y sus dependencias críticas *SOLAS* en una capa.
+RUN pip install --default-timeout=600 --no-cache-dir \
     dlib==19.24.2 \
+    face-recognition-models==0.3.0
+
+# 2. Instalar el resto de dependencias de la aplicación.
+RUN pip install --default-timeout=360 --no-cache-dir \
     face-recognition==1.3.0 \
-    face-recognition-models==0.3.0 \
     opencv-python-headless==4.12.0.88 \
     && pip install --default-timeout=360 --no-cache-dir -r requirements.txt
 
