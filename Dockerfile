@@ -45,13 +45,21 @@ COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/pyth
 
 # Instalar las librerías mínimas necesarias en tiempo de ejecución.
 # Se añade libgomp1 y la librería de ejecución de boost-python.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    libboost-all-dev \
+    libboost-python3.10-dev \
+    libx11-dev \
+    libjpeg-dev \
+    libpng-dev \
+    liblapack-dev \
+    libblas-dev \
+    pkg-config \
+    python3-dev \
     libsm6 \
     libxext6 \
-    libboost-all-dev \
-    libboost-python3.10 \
-    libglib2.0-0 \
-    libssl-dev \
+    libgtk2.0-dev \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
