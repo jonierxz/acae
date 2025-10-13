@@ -1,10 +1,11 @@
-
 FROM python:3.10-bullseye AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Instalar DEPENDENCIAS DEL SISTEMA (BUILDER PHASE)
-RUN apt-get update && apt-get install -y \
+# FASE 1: INSTALACIÓN Y COMPILACIÓN (BUILDER)
+
+# Instalar DEPENDENCIAS DEL SISTEMA necesarias para compilar dlib, OpenCV y otros.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
     libboost-all-dev \
@@ -21,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     libgtk2.0-dev \
     libgomp1 \
     libatlas-base-dev \
+    libboost-python3.10-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Crear directorio de trabajo y copiar requirements
@@ -28,8 +30,9 @@ WORKDIR /install
 COPY requirements.txt .
 
 # 1. Instalar dlib y sus dependencias críticas *SOLAS* en una capa.
-RUN pip install --default-timeout=600 --no-cache-dir \
-    dlib==19.24.2 \
+# Usamos --prefer-binary para intentar descargar una rueda precompilada (wheel) y evitar la compilación local.
+RUN pip install --default-timeout=600 --no-cache-dir --prefer-binary \
+    dlib==19.24.4 \
     face-recognition-models==0.3.0
 
 # 2. Instalar el resto de dependencias de la aplicación.
@@ -39,8 +42,7 @@ RUN pip install --default-timeout=360 --no-cache-dir \
     && pip install --default-timeout=360 --no-cache-dir -r requirements.txt
 
 # ----------------------------------------------------------------------
-# FASE 2: FINAL - Imagen de Producción (ligera)
-# *** CÓDIGO CORREGIDO AQUÍ: SOLO LIBRERÍAS DE EJECUCIÓN ***
+# FASE 2: PRODUCCIÓN (FINAL)
 # ----------------------------------------------------------------------
 FROM python:3.10-slim AS final
 
@@ -48,7 +50,7 @@ FROM python:3.10-slim AS final
 COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
 
 # Instalar las librerías mínimas necesarias en tiempo de ejecución.
-# Solo dejamos librerías de runtime.
+# (Se eliminan los paquetes -dev, build-essential y cmake).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
