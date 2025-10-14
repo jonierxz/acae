@@ -1,4 +1,4 @@
-FROM python:3.10-slim-buster
+FROM python:3.10-slim-bullseye
 
 # 1. Instalar dependencias necesarias para dlib wheels
 RUN apt-get update && apt-get install -y \
