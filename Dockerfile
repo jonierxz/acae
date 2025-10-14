@@ -1,48 +1,27 @@
-FROM python:3.10-bullseye
+FROM python:3.10-slim-buster
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Instalar dependencias del sistema necesarias para compilar y ejecutar dlib / face-recognition
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 1. Instalar dependencias necesarias para dlib wheels
+RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
-    libboost-all-dev \
-    libx11-dev \
-    libjpeg-dev \
-    libpng-dev \
+    libopenblas-dev \
     liblapack-dev \
-    libblas-dev \
-    libatlas-base-dev \
-    pkg-config \
-    python3-dev \
-    libsm6 \
-    libxext6 \
-    libgtk2.0-dev \
-    libgomp1 \
-    libglib2.0-0 \
+    libx11-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Directorio de trabajo
 WORKDIR /app
 
-# Copiar archivo de dependencias
+# 2. Copiar requirements.txt
 COPY requirements.txt .
 
-# Instalar dlib y face-recognition-models primero (evita errores)
-RUN pip install --no-cache-dir --default-timeout=600 \
-    dlib==19.24.4 \
-    face-recognition-models==0.3.0
+# 3. Instalar dlib y face-recognition-models usando wheels disponibles
+RUN pip install --no-cache-dir --only-binary :all: dlib==19.24.4
+RUN pip install --no-cache-dir face-recognition-models==0.3.0
 
-# Instalar face-recognition y las demás dependencias
-RUN pip install --no-cache-dir --default-timeout=600 \
-    face-recognition==1.3.0 \
-    && pip install --no-cache-dir -r requirements.txt
+# 4. Instalar el resto de dependencias
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el código de la aplicación
+# 5. Copiar el código
 COPY . .
 
-# Exponer puerto si tu app lo usa
-EXPOSE 8000
-
-# Comando de inicio
 CMD ["python", "run.py"]
