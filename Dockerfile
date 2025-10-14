@@ -1,34 +1,32 @@
-# Usamos miniconda como base (incluye Python)
-FROM continuumio/miniconda3:latest
+# Imagen base con conda (miniconda + mamba)
+FROM mambaorg/micromamba:latest
 
 # Evitar prompts interactivos
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Crear directorio de trabajo
+# Directorio de trabajo
 WORKDIR /app
 
-# Copiar requirements (si usas pip para otras librerías)
+# Copiar requirements si usas pip
 COPY requirements.txt .
 
-# ACTUALIZAR CONDA
-RUN conda update -n base -c defaults conda -y
+# Instalar dlib desde conda-forge (precompilado = rápido)
+RUN micromamba install -y -c conda-forge dlib=19.24.4 && \
+    micromamba clean --all --yes
 
-# INSTALAR DLIB desde conda-forge (precompilado, rápido)
-RUN conda install -y -c conda-forge dlib=19.24.4
-
-# INSTALAR face-recognition (vía pip, funciona perfecto con dlib ya instalado)
+# Instalar face-recognition y modelos con pip (ya funciona porque dlib está instalado)
 RUN pip install --no-cache-dir face-recognition==1.3.0 face-recognition-models==0.3.0
 
-# Instalar OpenCV headless u otras dependencias via pip
+# Instalar opencv headless (sin GUI)
 RUN pip install --no-cache-dir opencv-python-headless==4.12.0.88
 
 # Instalar el resto de dependencias de tu proyecto
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el resto de la app
+# Copiar el resto del código
 COPY . .
 
-# Exponer puerto
+# Exponer el puerto
 EXPOSE 8000
 
 # Comando de inicio
