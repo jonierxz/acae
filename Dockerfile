@@ -1,69 +1,31 @@
-FROM python:3.10-bullseye AS builder
+# Usamos miniconda como base (incluye Python)
+FROM continuumio/miniconda3:latest
 
+# Evitar prompts interactivos
 ENV DEBIAN_FRONTEND=noninteractive
 
-# FASE 1: INSTALACIÓN Y COMPILACIÓN (BUILDER)
-
-# Instalar DEPENDENCIAS DEL SISTEMA necesarias para compilar dlib, OpenCV y otros.
-# *** CORRECCIÓN: Se elimina 'libboost-python3.10-dev' que no existe. ***
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    cmake \
-    libboost-all-dev \
-    libboost-python-dev \
-    libx11-dev \
-    libjpeg-dev \
-    libpng-dev \
-    liblapack-dev \
-    libblas-dev \
-    pkg-config \
-    python3-dev \
-    libsm6 \
-    libxext6 \
-    libgtk2.0-dev \
-    libgomp1 \
-    libatlas-base-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Crear directorio de trabajo y copiar requirements
-WORKDIR /install
-COPY requirements.txt .
-
-# 1. Instalar dlib y sus dependencias críticas *SOLAS* en una capa.
-RUN pip install --default-timeout=600 --no-cache-dir --prefer-binary \
-    dlib==19.24.4 \
-    face-recognition-models==0.3.0
-
-# 2. Instalar el resto de dependencias de la aplicación.
-RUN pip install --default-timeout=360 --no-cache-dir \
-    face-recognition==1.3.0 \
-    opencv-python-headless==4.12.0.88 \
-    && pip install --default-timeout=360 --no-cache-dir -r requirements.txt
-
-# ----------------------------------------------------------------------
-# FASE 2: PRODUCCIÓN (FINAL)
-# ----------------------------------------------------------------------
-FROM python:3.10-slim AS final
-
-# Copiar las librerías compiladas desde la fase 'builder'
-COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
-
-# Instalar las librerías mínimas necesarias en tiempo de ejecución.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libsm6 \
-    libxext6 \
-    libglib2.0-0 \
-    libssl-dev \
-    libgomp1 \
-    libatlas-base \
-    libboost-python3.10 \
-    libjpeg62-turbo \
-    && rm -rf /var/lib/apt/lists/*
-
-# Crear directorio de trabajo de la app
+# Crear directorio de trabajo
 WORKDIR /app
 
-# Copiar el código de tu proyecto
+# Copiar requirements (si usas pip para otras librerías)
+COPY requirements.txt .
+
+# ACTUALIZAR CONDA
+RUN conda update -n base -c defaults conda -y
+
+# INSTALAR DLIB desde conda-forge (precompilado, rápido)
+RUN conda install -y -c conda-forge dlib=19.24.4
+
+# INSTALAR face-recognition (vía pip, funciona perfecto con dlib ya instalado)
+RUN pip install --no-cache-dir face-recognition==1.3.0 face-recognition-models==0.3.0
+
+# Instalar OpenCV headless u otras dependencias via pip
+RUN pip install --no-cache-dir opencv-python-headless==4.12.0.88
+
+# Instalar el resto de dependencias de tu proyecto
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar el resto de la app
 COPY . .
 
 # Exponer puerto
