@@ -10,15 +10,21 @@ WORKDIR /app
 # Copiar requirements.txt.
 COPY requirements.txt .
 
-# --- Etapa 1: Instalación de herramientas del sistema (¡NUEVO!) ---
-# Instalamos las herramientas de compilación del sistema (build-essential, cmake)
-# Esto es necesario para que 'pip install' compile y vincule correctamente
-# face-recognition y dlib, incluso si dlib ya fue pre-instalado por Conda.
+# -------------------------------------------------------------
+# --- Etapa 1: Instalación de herramientas del sistema (ROOT) ---
+# Se cambia a root para ejecutar apt-get y se vuelve al usuario por defecto.
+USER root
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
-        cmake && \
+        cmake \
+        libgtk2.0-dev \
+        pkg-config && \
     rm -rf /var/lib/apt/lists/*
+
+# Volvemos al usuario por defecto de la imagen (micromamba) para el resto de pasos
+USER $MAMBA_USER
+# -------------------------------------------------------------
 
 # --- Etapa 2: Instalación de las dependencias difíciles (Conda) ---
 # Instalamos dlib, opencv y numpy desde conda-forge.
