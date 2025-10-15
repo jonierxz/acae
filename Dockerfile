@@ -4,15 +4,14 @@ FROM mambaorg/micromamba:latest
 # Establece el directorio de trabajo dentro del contenedor
 WORKDIR /app
 
-# (1/7) Copia el archivo de requerimientos
+# (1/6) Copia el archivo de requerimientos (ASEGÚRATE DE QUE NO TIENE numpy, opencv, o dlib)
 COPY requirements.txt .
 
-# --- Etapa 2: Instalación de dependencias del sistema operativo (APT) ---
-# CAMBIA A ROOT: Necesario para que apt-get tenga permisos de escritura
+# --- Instalación de dependencias del sistema operativo (APT) ---
+# CAMBIA A ROOT: Necesario para que apt-get tenga permisos
 USER root
 
-# (2/7) Instalación de build tools
-# Esto es esencialmente para compilar dlib (si se necesitara) y para las dependencias de OpenCV y GTK.
+# (2/6) Instalación de build tools
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
@@ -21,16 +20,15 @@ RUN apt-get update && \
         pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
-# --- Etapa 3: Vuelve al usuario no-root ---
-# VUELVE AL USUARIO MICROMAMBA: Esto es crucial para seguir las mejores prácticas de seguridad
-# y para que los comandos de micromamba/pip funcionen correctamente con los permisos del entorno.
+# VUELVE AL USUARIO MICROMAMBA: Crucial para el resto de la construcción
 USER $MAMBA_USER
 
-# (3/7) Configuración de micromamba (Mantenido del anterior)
+# (3/6) Configuración del entorno
 ENV PATH="/opt/conda/bin:${PATH}"
 
-# (4/7) Instalación de dependencias binarias complejas con Conda (micromamba)
-RUN echo "Instalando dlib, numpy y opencv con micromamba..." && \
+# (4/6) Instalación de dependencias binarias complejas con Conda (micromamba)
+# Conda maneja dlib, numpy, y opencv para evitar problemas de compilación.
+RUN echo "Instalando dependencias binarias con micromamba..." && \
     micromamba install -y -c conda-forge \
         dlib=19.24.4 \
         opencv \
@@ -38,15 +36,18 @@ RUN echo "Instalando dlib, numpy y opencv con micromamba..." && \
         python && \
     micromamba clean --all --yes
 
-# (5/7) Instalación de face-recognition (pip)
+# (5/6) Instalación de face-recognition (pip)
+# Esto es necesario si 'face-recognition' está fuera de requirements.txt, y la bandera --no-deps es vital.
+# Si 'face-recognition' está en requirements.txt, omite este paso y confía en el paso 6.
 RUN echo "Instalando face-recognition..." && \
     micromamba run -n base pip install --no-cache-dir \
         face-recognition==1.3.0 \
         face-recognition-models==0.3.0 --no-deps
 
-# (6/7) Instalación de las dependencias restantes (pip)
+# (6/6) Instalación de las dependencias restantes (pip)
+# Esto instala el resto de tu requirements.txt (Flask, SQLAlchemy, etc.).
 RUN echo "Instalando dependencias restantes de requirements.txt..." && \
     micromamba run -n base pip install --no-cache-dir -r requirements.txt
 
-# (7/7) Comando por defecto al iniciar el contenedor
+# Comando por defecto al iniciar el contenedor
 CMD ["/bin/bash"]
