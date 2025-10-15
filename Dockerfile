@@ -50,4 +50,4 @@ RUN echo "Instalando dependencias restantes de requirements.txt..." && \
     micromamba run -n base pip install --no-cache-dir -r requirements.txt
 
 # Comando por defecto al iniciar el contenedor
-CMD ["/bin/bash"]
+CMD ["python", "run.py"]
