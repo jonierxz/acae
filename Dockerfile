@@ -41,7 +41,7 @@ RUN micromamba install -y -c conda-forge \
 RUN echo "Instalando face-recognition y dependencias restantes..." && \
     micromamba run -n base pip install --no-cache-dir \
         face-recognition==1.3.0 \
-        face-recognition-models==0.3.0 && \
+        face-recognition-models==0.3.0 --no-deps && \
     micromamba run -n base pip install --no-cache-dir -r requirements.txt
 
 # --- Etapa 4: Código de la Aplicación y Ejecución ---
