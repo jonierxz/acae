@@ -1,19 +1,15 @@
-# Imagen base con micromamba
+# Usa una imagen base con micromamba preinstalado
 FROM mambaorg/micromamba:latest
 
-# Evitar prompts interactivos
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Directorio de trabajo
+# Establece el directorio de trabajo dentro del contenedor
 WORKDIR /app
 
-# Copiar requirements.txt.
+# (1/7) Copia el archivo de requerimientos para que el proceso de construcción pueda usarlo
+# Asegúrate de que este 'requirements.txt' NO contenga la línea de 'dlib'.
 COPY requirements.txt .
 
-# -------------------------------------------------------------
-# --- Etapa 1: Instalación de herramientas del sistema (ROOT) ---
-USER root
-# Añadimos libgtk2.0-dev, pkg-config, build-essential, y cmake para la compilación de OpenCV y dependencias.
+# (2/7) Instalación de dependencias del sistema operativo (APT)
+# Esto es esencialmente para compilar dlib (si se necesitara) y para las dependencias de OpenCV y GTK.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
@@ -22,34 +18,38 @@ RUN apt-get update && \
         pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
-# Volvemos al usuario por defecto
-USER $MAMBA_USER
-# -------------------------------------------------------------
+# (3/7) Configuración de micromamba (Opcional, pero buena práctica)
+# Crea el entorno base (aunque micromamba a menudo usa un entorno base por defecto)
+# La inicialización ya la maneja la imagen base, pero podemos asegurar el PATH
+ENV PATH="/opt/conda/bin:${PATH}"
 
-# --- Etapa 2: Instalación de las dependencias difíciles (Conda) ---
-# **Instalar solo Dlib (19.24.4), OpenCV y NumPy con Conda.**
-RUN micromamba install -y -c conda-forge \
-    dlib=19.24.4 \
-    opencv \
-    numpy \
-    python && \
+# (4/7) Instalación de dependencias binarias complejas con Conda (micromamba)
+# Conda-forge proporciona binarios precompilados de dlib, numpy y opencv,
+# lo cual es crucial para evitar errores de compilación de pip.
+RUN echo "Instalando dlib, numpy y opencv con micromamba..." && \
+    micromamba install -y -c conda-forge \
+        dlib=19.24.4 \
+        opencv \
+        numpy \
+        python && \
     micromamba clean --all --yes
 
-# --- Etapa 3: Instalación de face-recognition (pip) ---
-# **Instalar face-recognition y face-recognition-models.**
-# Pip detectará el dlib instalado por Conda y lo usará, sin intentar recompilarlo.
-RUN echo "Instalando face-recognition y dependencias restantes..." && \
+# (5/7) Instalación de face-recognition (pip)
+# Usamos --no-deps para asegurar que pip NO intente descargar y compilar dlib,
+# obligándolo a usar la versión instalada por Conda en el paso anterior.
+RUN echo "Instalando face-recognition..." && \
     micromamba run -n base pip install --no-cache-dir \
         face-recognition==1.3.0 \
-        face-recognition-models==0.3.0 --no-deps && \
+        face-recognition-models==0.3.0 --no-deps
+
+# (6/7) Instalación de las dependencias restantes (pip)
+# Esto instala el resto de paquetes de tu requirements.txt.
+RUN echo "Instalando dependencias restantes de requirements.txt..." && \
     micromamba run -n base pip install --no-cache-dir -r requirements.txt
 
-# --- Etapa 4: Código de la Aplicación y Ejecución ---
-# Copiar el resto del código
-COPY . .
+# (7/7) Comando por defecto al iniciar el contenedor (Ejemplo)
+CMD ["/bin/bash"] 
 
-# Exponer el puerto
-EXPOSE 8000
-
-# Comando de inicio
-CMD ["micromamba", "run", "-n", "base", "python", "run.py"]
+# Si tienes un archivo principal (ej. app.py), cópialo aquí y ajusta el CMD/ENTRYPOINT
+# COPY app.py .
+# CMD ["python", "app.py"]
