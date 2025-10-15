@@ -48,6 +48,7 @@ RUN echo "Instalando face-recognition..." && \
 # Esto instala el resto de tu requirements.txt (Flask, SQLAlchemy, etc.).
 RUN echo "Instalando dependencias restantes de requirements.txt..." && \
     micromamba run -n base pip install --no-cache-dir -r requirements.txt
-
+    
+COPY . /app
 # Comando por defecto al iniciar el contenedor
 CMD ["python", "run.py"]
