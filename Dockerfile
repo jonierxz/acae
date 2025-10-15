@@ -12,8 +12,8 @@ COPY requirements.txt .
 
 # -------------------------------------------------------------
 # --- Etapa 1: Instalación de herramientas del sistema (ROOT) ---
-# Se cambia a root para ejecutar apt-get y se vuelve al usuario por defecto.
 USER root
+# Añadimos libgtk2.0-dev, pkg-config, build-essential, y cmake para la compilación de OpenCV y dependencias.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
@@ -22,12 +22,12 @@ RUN apt-get update && \
         pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
-# Volvemos al usuario por defecto de la imagen (micromamba) para el resto de pasos
+# Volvemos al usuario por defecto
 USER $MAMBA_USER
 # -------------------------------------------------------------
 
 # --- Etapa 2: Instalación de las dependencias difíciles (Conda) ---
-# Instalamos dlib, opencv y numpy desde conda-forge.
+# **Instalar solo Dlib (19.24.4), OpenCV y NumPy con Conda.**
 RUN micromamba install -y -c conda-forge \
     dlib=19.24.4 \
     opencv \
@@ -36,7 +36,8 @@ RUN micromamba install -y -c conda-forge \
     micromamba clean --all --yes
 
 # --- Etapa 3: Instalación de face-recognition (pip) ---
-# face-recognition detectará dlib, numpy, y opencv ya instalados por Conda y los usará.
+# **Instalar face-recognition y face-recognition-models.**
+# Pip detectará el dlib instalado por Conda y lo usará, sin intentar recompilarlo.
 RUN echo "Instalando face-recognition y dependencias restantes..." && \
     micromamba run -n base pip install --no-cache-dir \
         face-recognition==1.3.0 \
