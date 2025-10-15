@@ -13,6 +13,7 @@ from flask_login import current_user, login_required
 from datetime import datetime
 from sqlalchemy import literal
 from app.utilidad.extensions import db 
+import pytz
 
 # Inicialización de instancias 
 face_rec_instance = FaceRecognition() 
@@ -130,9 +131,11 @@ def check_attendance():
         rol = 'User'
         motivo = request.form.get('motivo')  # Si quieres permitir motivo desde el frontend
 
-        current_date = datetime.now().date()
-        current_time = datetime.now().time()
-
+        colombia_tz = pytz.timezone('America/Bogota')
+        now_colombia = datetime.now(colombia_tz)
+        current_date = now_colombia.date()
+        current_time = now_colombia.time()
+        
         # Último ingreso de hoy
         ingreso = Ingreso.query.filter_by(user_id=user_id, fecha=current_date).order_by(Ingreso.idIngreso.desc()).first()
 
