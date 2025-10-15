@@ -8,14 +8,20 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 
 # Copiar requirements.txt.
-# (Debe contener SÓLO dependencias que NO sean dlib, opencv, numpy o face-recognition).
 COPY requirements.txt .
 
-# --- Etapa 1: Instalación de las dependencias difíciles (Conda) ---
+# --- Etapa 1: Instalación de herramientas del sistema (¡NUEVO!) ---
+# Instalamos las herramientas de compilación del sistema (build-essential, cmake)
+# Esto es necesario para que 'pip install' compile y vincule correctamente
+# face-recognition y dlib, incluso si dlib ya fue pre-instalado por Conda.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake && \
+    rm -rf /var/lib/apt/lists/*
+
+# --- Etapa 2: Instalación de las dependencias difíciles (Conda) ---
 # Instalamos dlib, opencv y numpy desde conda-forge.
-# Micromamba/Conda resolverá automáticamente las dependencias de compilación
-# (como gcc/g++) necesarias para dlib.
-# Se elimina 'python-dev', 'gcc' y 'g++' que estaban causando el error.
 RUN micromamba install -y -c conda-forge \
     dlib=19.24.4 \
     opencv \
@@ -23,15 +29,15 @@ RUN micromamba install -y -c conda-forge \
     python && \
     micromamba clean --all --yes
 
-# --- Etapa 2: Instalación de face-recognition (pip) ---
-# face-recognition detectará dlib y numpy ya instalados por Conda y no los reinstalará.
+# --- Etapa 3: Instalación de face-recognition (pip) ---
+# face-recognition detectará dlib, numpy, y opencv ya instalados por Conda y los usará.
 RUN echo "Instalando face-recognition y dependencias restantes..." && \
     micromamba run -n base pip install --no-cache-dir \
         face-recognition==1.3.0 \
         face-recognition-models==0.3.0 && \
     micromamba run -n base pip install --no-cache-dir -r requirements.txt
 
-# --- Etapa 3: Código de la Aplicación y Ejecución ---
+# --- Etapa 4: Código de la Aplicación y Ejecución ---
 # Copiar el resto del código
 COPY . .
 
