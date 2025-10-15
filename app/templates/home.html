@@ -202,15 +202,15 @@ function capturePhoto() {
 }
 
 /** Envía el Blob de la imagen al servidor para el registro de asistencia */
-async function sendForAttendance(imageBlob) {
+async function sendForAttendance(imageBlob, motivo = "") {
     statusMessage.textContent = 'Enviando imagen para reconocimiento...';
     captureBtn.disabled = true;
 
     const formData = new FormData();
     formData.append('image', imageBlob, 'capture.jpg');
+    formData.append('motivo', motivo);
 
     try {
-        // La ruta que creamos en face_routes.py
         const response = await fetch('/face/check_attendance', {
             method: 'POST',
             body: formData
@@ -219,23 +219,24 @@ async function sendForAttendance(imageBlob) {
         const result = await response.json();
 
         if (result.success) {
-            // Éxito: Entrada o Salida registrada
             const action = result.event_to_register === 'IN' ? 'Entrada' : 'Salida';
             statusMessage.style.color = '#4CAF50';
             statusMessage.textContent = `${result.message}`;
-            
-            // Usamos alert temporalmente
             setTimeout(() => {
                 alert(`Registro Facial Exitoso: ${action} completada. Mensaje del servidor: ${result.message}`);
                 stopCamera(); 
             }, 100); 
-            
         } else {
-            // Falla: Rostro no reconocido o error del servidor
             statusMessage.style.color = '#FF5252';
             statusMessage.textContent = `Fallo en el registro: ${result.error}`;
-            captureBtn.disabled = false; 
-            alert(`Error en el registro facial: ${result.error}`);
+            captureBtn.disabled = false;
+
+            // Si el backend pide motivo, muestra input y botón
+            if (result.error && result.error.includes("motivo")) {
+                mostrarCampoMotivo(imageBlob);
+            } else {
+                alert(`Error en el registro facial: ${result.error}`);
+            }
         }
 
     } catch (error) {
@@ -245,6 +246,57 @@ async function sendForAttendance(imageBlob) {
         captureBtn.disabled = false;
     }
 }
+function mostrarCampoMotivo(imageBlob) {
+    // Elimina campo motivo anterior si existe
+    let motivoDiv = document.getElementById('motivo-div');
+    if (motivoDiv) motivoDiv.remove();
+
+    motivoDiv = document.createElement('div');
+    motivoDiv.id = 'motivo-div';
+    motivoDiv.style = 'margin-top:20px; text-align:center;';
+
+    const motivoInput = document.createElement('input');
+    motivoInput.type = 'text';
+    motivoInput.placeholder = 'Ingrese el motivo';
+    motivoInput.className = 'form-control mb-2';
+    motivoInput.style = 'max-width:300px; display:inline-block;';
+
+    const enviarBtn = document.createElement('button');
+    enviarBtn.className = 'btn btn-success';
+    enviarBtn.textContent = 'Enviar motivo';
+
+    motivoDiv.appendChild(motivoInput);
+    motivoDiv.appendChild(enviarBtn);
+
+    // Agrega el campo debajo del statusMessage
+    statusMessage.parentNode.insertBefore(motivoDiv, statusMessage.nextSibling);
+
+    enviarBtn.addEventListener('click', async function() {
+        const motivo = motivoInput.value.trim();
+        if (!motivo) {
+            alert('Por favor ingrese el motivo.');
+            return;
+        }
+        motivoDiv.remove();
+        await sendForAttendance(imageBlob, motivo);
+    });
+}
+
+captureBtn.addEventListener('click', async () => {
+    try {
+        captureBtn.disabled = true; 
+        statusMessage.textContent = 'Capturando...';
+        const imageBlob = await capturePhoto();
+        await sendForAttendance(imageBlob); // Motivo vacío en primer intento
+    } catch (error) {
+        console.error(error);
+        statusMessage.style.color = '#FF5252';
+        statusMessage.textContent = 'Error al procesar la captura. Intente de nuevo.';
+        captureBtn.disabled = false;
+    }
+});
+
+
 
 // 2. Manejo de Eventos del Botón Facial
 qrFeatureBox.addEventListener('click', () => {

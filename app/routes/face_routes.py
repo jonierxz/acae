@@ -101,13 +101,18 @@ def register_face():
         return jsonify({'success': False, 'error': f'Un error interno ocurrió en el servidor durante el registro: {e}'}), 500
 # ------------------------------------------------------------------------------------------
 
+def determinar_horario_actual():
+    colombia_tz = pytz.timezone('America/Bogota')
+    now_colombia = datetime.now(colombia_tz)
+    hora = now_colombia.hour
+    # Puedes ajustar los rangos según tu lógica de horarios
+    if hora < 12:
+        return "Mañana"
+    else:
+        return "Tarde"
 
 @face_bp.route('/check_attendance', methods=['POST'])
 def check_attendance():
-    """
-    Procesa la imagen, identifica al usuario, y registra el evento de ENTRADA (Ingreso)
-    o SALIDA (Salida) basándose en el último registro.
-    """
     try:
         if 'image' not in request.files:
             return jsonify({'success': False, 'error': 'No se encontró la imagen de asistencia en la solicitud.'}), 400
@@ -118,7 +123,6 @@ def check_attendance():
         if captured_encoding is None:
             return jsonify({'success': False, 'error': 'No se detectó un rostro válido para el registro de asistencia.'}), 400
 
-        # 1. Buscar usuario coincidente
         user_id, username = face_rec_instance.find_matching_user(captured_encoding)
 
         if not user_id:
@@ -129,18 +133,25 @@ def check_attendance():
             return jsonify({'success': False, 'error': 'Error: Datos de usuario no encontrados.'}), 500
 
         rol = 'User'
-        motivo = request.form.get('motivo')  # Si quieres permitir motivo desde el frontend
+        motivo = request.form.get('motivo')
 
         colombia_tz = pytz.timezone('America/Bogota')
         now_colombia = datetime.now(colombia_tz)
         current_date = now_colombia.date()
         current_time = now_colombia.time()
-        
-        # Último ingreso de hoy
+
         ingreso = Ingreso.query.filter_by(user_id=user_id, fecha=current_date).order_by(Ingreso.idIngreso.desc()).first()
 
+        # Si no tiene ingreso hoy, registrar ingreso
         if not ingreso:
-            # No tiene ingreso hoy, registrar ingreso
+            # Si el horario actual no coincide con el asignado y no hay motivo, pedir motivo
+            horario_actual = determinar_horario_actual() if 'determinar_horario_actual' in globals() else user_data.horario
+            if horario_actual != user_data.horario and not motivo:
+                return jsonify({
+                    'success': False,
+                    'error': f'Su horario asignado es "{user_data.horario}", pero está intentando ingresar en horario "{horario_actual}". Por favor ingrese un motivo para continuar.'
+                }), 400
+
             nuevo_ingreso = Ingreso(
                 user_id=user_id,
                 rol=rol,
@@ -154,10 +165,8 @@ def check_attendance():
             db.session.commit()
             return jsonify({'success': True, 'message': f'¡Entrada registrada con éxito para {username}!', 'event_to_register': 'IN'})
         else:
-            # Tiene ingreso hoy, buscar salida asociada
             salida = Salida.query.filter_by(user_id=user_id, ingreso_id=ingreso.idIngreso).first()
             if not salida:
-                # No tiene salida, registrar salida
                 nueva_salida = Salida(
                     user_id=user_id,
                     rol=rol,
@@ -172,7 +181,10 @@ def check_attendance():
             else:
                 # Ya tiene salida, solo puede registrar nuevo ingreso si pone motivo
                 if not motivo:
-                    return jsonify({'success': False, 'error': 'Debe ingresar un motivo para volver a entrar.'}), 400
+                    return jsonify({
+                        'success': False,
+                        'error': 'Ya registró ingreso y salida hoy. Para volver a ingresar debe ingresar un motivo.'
+                    }), 400
                 nuevo_ingreso = Ingreso(
                     user_id=user_id,
                     rol=rol,

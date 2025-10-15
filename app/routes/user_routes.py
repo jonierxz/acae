@@ -13,6 +13,7 @@ from app.models.super import Super
 from calendar import monthrange
 from flask import send_file
 from app.utilidad.utils_excel import exportar_asistencia_excel
+import pytz
 
 user_bp = Blueprint('user', __name__)
 
@@ -259,6 +260,12 @@ def home_super():
 
 @user_bp.route('/registrar_ingreso', methods=['POST'])
 def registrar_ingreso():
+    import pytz
+    colombia_tz = pytz.timezone('America/Bogota')
+    now_colombia = datetime.now(colombia_tz)
+    current_date = now_colombia.date()
+    current_time = now_colombia.time()
+
     data = request.get_json()
     documento = data.get('documento')
     motivo = data.get('motivo')
@@ -269,10 +276,9 @@ def registrar_ingreso():
     # 1. Buscar si es Usuario
     usuario = User.query.filter_by(documentUser=documento).first()
     if usuario:
-        horario_actual = determinar_horario_actual()
         horario_trabajador = usuario.horario
 
-        ingreso = Ingreso.query.filter_by(user_id=usuario.idUser, fecha=date.today()).order_by(Ingreso.idIngreso.desc()).first()
+        ingreso = Ingreso.query.filter_by(user_id=usuario.idUser, fecha=current_date).order_by(Ingreso.idIngreso.desc()).first()
 
         if ingreso:
             salida = Salida.query.filter_by(user_id=usuario.idUser, ingreso_id=ingreso.idIngreso).first()
@@ -284,9 +290,9 @@ def registrar_ingreso():
                     user_id=usuario.idUser,
                     admin_id=None,
                     rol="User",
-                    fecha=date.today(),
-                    hora=datetime.now().time(),
-                    horario=horario_actual,
+                    fecha=current_date,
+                    hora=current_time,
+                    horario=horario_trabajador,  # SIEMPRE el horario asignado al usuario
                     estado='Presente',
                     motivo=motivo
                 )
@@ -299,24 +305,24 @@ def registrar_ingreso():
                     admin_id=None,
                     rol="User",
                     ingreso_id=ingreso.idIngreso,
-                    fecha=date.today(),
-                    hora_salida=datetime.now().time(),
+                    fecha=current_date,
+                    hora_salida=current_time,
                     horario=ingreso.horario
                 )
                 db.session.add(nueva_salida)
                 db.session.commit()
                 return jsonify({'success': True, 'message': 'Salida registrada'})
         else:
-            if horario_actual != horario_trabajador and not motivo:
-                return jsonify({'success': False, 'message': f'El horario actual es {horario_actual}, pero su horario asignado es {horario_trabajador}. Ingrese un motivo para continuar.'}), 400
+            if determinar_horario_actual() != horario_trabajador and not motivo:
+                return jsonify({'success': False, 'message': f'El horario actual es {determinar_horario_actual()}, pero su horario asignado es {horario_trabajador}. Ingrese un motivo para continuar.'}), 400
 
             nuevo_ingreso = Ingreso(
                 user_id=usuario.idUser,
                 admin_id=None,
                 rol="User",
-                fecha=date.today(),
-                hora=datetime.now().time(),
-                horario=horario_actual,
+                fecha=current_date,
+                hora=current_time,
+                horario=horario_trabajador,  # SIEMPRE el horario asignado al usuario
                 estado='Presente',
                 motivo=motivo
             )
@@ -327,10 +333,9 @@ def registrar_ingreso():
     # 2. Buscar si es Admin
     admin = Admin.query.filter_by(documentAdmin=documento).first()
     if admin:
-        horario_actual = determinar_horario_actual()
         horario_admin = admin.horario
 
-        ingreso = Ingreso.query.filter_by(admin_id=admin.idAdmin, fecha=date.today()).order_by(Ingreso.idIngreso.desc()).first()
+        ingreso = Ingreso.query.filter_by(admin_id=admin.idAdmin, fecha=current_date).order_by(Ingreso.idIngreso.desc()).first()
 
         if ingreso:
             salida = Salida.query.filter_by(admin_id=admin.idAdmin, ingreso_id=ingreso.idIngreso).first()
@@ -342,9 +347,9 @@ def registrar_ingreso():
                     user_id=None,
                     admin_id=admin.idAdmin,
                     rol="Admin",
-                    fecha=date.today(),
-                    hora=datetime.now().time(),
-                    horario=horario_actual,
+                    fecha=current_date,
+                    hora=current_time,
+                    horario=horario_admin,  # SIEMPRE el horario asignado al admin
                     estado='Presente',
                     motivo=motivo
                 )
@@ -357,24 +362,24 @@ def registrar_ingreso():
                     admin_id=admin.idAdmin,
                     rol="Admin",
                     ingreso_id=ingreso.idIngreso,
-                    fecha=date.today(),
-                    hora_salida=datetime.now().time(),
+                    fecha=current_date,
+                    hora_salida=current_time,
                     horario=ingreso.horario
                 )
                 db.session.add(nueva_salida)
                 db.session.commit()
                 return jsonify({'success': True, 'message': 'Salida (Admin) registrada'})
         else:
-            if horario_actual != horario_admin and not motivo:
-                return jsonify({'success': False, 'message': f'El horario actual es {horario_actual}, pero su horario asignado es {horario_admin}. Ingrese un motivo para continuar.'}), 400
+            if determinar_horario_actual() != horario_admin and not motivo:
+                return jsonify({'success': False, 'message': f'El horario actual es {determinar_horario_actual()}, pero su horario asignado es {horario_admin}. Ingrese un motivo para continuar.'}), 400
 
             nuevo_ingreso = Ingreso(
                 user_id=None,
                 admin_id=admin.idAdmin,
                 rol="Admin",
-                fecha=date.today(),
-                hora=datetime.now().time(),
-                horario=horario_actual,
+                fecha=current_date,
+                hora=current_time,
+                horario=horario_admin,  # SIEMPRE el horario asignado al admin
                 estado='Presente',
                 motivo=motivo
             )
