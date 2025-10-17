@@ -14,6 +14,7 @@ from calendar import monthrange
 from flask import send_file
 from app.utilidad.utils_excel import exportar_asistencia_excel
 import pytz
+from werkzeug.security import generate_password_hash
 
 user_bp = Blueprint('user', __name__)
 
@@ -236,7 +237,10 @@ def dashboard():
     if 'admin_id' not in session:
         return redirect(url_for('user.login'))
 
-    return render_template('dashboard.html', username=session['username'])
+    # Traer todos los usuarios registrados
+    usuarios = User.query.all()  # o el método que uses para obtenerlos
+
+    return render_template('dashboard.html', username=session['username'], usuarios=usuarios)
 
 # Registrar el horario y el ingreso
 def determinar_horario_actual():
@@ -248,6 +252,64 @@ def determinar_horario_actual():
         return "Tarde"
     else:
         return "Noche"
+
+
+@user_bp.route('/usuario/modificar/<int:user_id>', methods=['GET', 'POST'])
+@login_required()
+def modificar_usuario(user_id):
+    # Buscar usuario por idUser
+    usuario = User.query.filter_by(idUser=user_id).first()
+    if not usuario:
+        flash("Usuario no encontrado", "danger")
+        return redirect(url_for('user.dashboard'))
+
+    if request.method == 'POST':
+        username = request.form.get('username')
+        if username:
+            usuario.usernameUser = username
+
+        document = request.form.get('document')
+        if document:
+            usuario.documentUser = document
+
+        phone = request.form.get('phone')
+        if phone:
+            usuario.phoneUser = phone
+
+        email = request.form.get('email')
+        if email:
+            usuario.emailUser = email
+
+        horario = request.form.get('horario')
+        if horario:
+            usuario.horario = horario
+
+        password = request.form.get('password')
+        if password:
+            usuario.passwordUser = generate_password_hash(password)
+
+        try:
+            db.session.commit()
+            flash("Usuario modificado correctamente", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error al guardar: {e}", "danger")
+
+        return redirect(url_for('user.dashboard'))
+
+    return render_template('modificar_usuario.html', usuario=usuario)
+
+#eliminar usuario seleccionado
+@user_bp.route('/usuario/eliminar/<int:user_id>', methods=['POST','GET'])
+def eliminar_usuario(user_id):
+    usuario = User.query.get(user_id)
+    if not usuario:
+        return "Usuario no encontrado", 404
+
+    db.session.delete(usuario)
+    db.session.commit()
+    return redirect(url_for('user.dashboard'))
+
     
 # route del super
 

@@ -16,16 +16,25 @@
         <header class="dashboard-header">
             <h1>Datos del Ingreso</h1>
             <a href="{{ url_for('user.logout') }}" class="btn btn-danger">Cerrar sesión</a>
+
+            <!-- Selector de empleados -->
             <div class="employee-selector">
                 <label for="employee-select">Seleccionar Empleado:</label>
-                <select id="employee-select"></select>
+                <select id="employee-select">
+                    {% for usuario in usuarios %}
+                        <option value="{{ usuario.id }}">{{ usuario.nombre }} - {{ usuario.correo }}</option>
+                    {% endfor %}
+                </select>
             </div>
+
             <a href="{{ url_for('user.register') }}" class="btn btn-primary">Registrar Empleado</a>
         </header>
+
         <main class="dashboard-main">
             <div id="calendar-container">
                 <div id="calendar"></div>
             </div>
+
             <div id="details-panel">
                 <h2>Detalles del Día</h2>
                 <button id="export-details-btn" class="btn btn-success mb-2">Exportar datos</button>
@@ -34,11 +43,47 @@
                 </div>
                 <hr>
                 <div id="summary-content" class="mt-3"></div>
+                <br>
+
+                <!-- Botones dinámicos usando JS -->
+                <a href="#" id="modify-btn" class="btn btn-outline-warning">Modificar Empleado</a>
+                <br><br>
+                <a href="#" id="delete-btn" class="btn btn-outline-danger">Eliminar Empleado</a>
+            </div>
         </main>
     </div>
 
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        const select = document.getElementById('employee-select');
+        const modifyBtn = document.getElementById('modify-btn');
+        const deleteBtn = document.getElementById('delete-btn');
+
+        // Redirigir al formulario de modificación con el user_id seleccionado
+        modifyBtn.addEventListener('click', () => {
+            const userId = select.value;
+            if(userId) {
+                window.location.href = `/usuario/modificar/${userId}`;
+            } else {
+                alert('Seleccione un empleado');
+            }
+        });
+
+        // Redirigir a la ruta de eliminación con confirmación
+        deleteBtn.addEventListener('click', () => {
+            const userId = select.value;
+            if(userId) {
+                if(confirm('¿Seguro que desea eliminar este empleado?')) {
+                    window.location.href = `/usuario/eliminar/${userId}`;
+                }
+            } else {
+                alert('Seleccione un empleado');
+            }
+        });
+    </script>
+
     <!-- Tu JS local -->
-     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>
