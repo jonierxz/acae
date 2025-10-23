@@ -244,7 +244,9 @@ def dashboard():
 
 # Registrar el horario y el ingreso
 def determinar_horario_actual():
-    ahora = datetime.now().time()
+    # Usar la zona horaria de Colombia
+    colombia_tz = pytz.timezone('America/Bogota')
+    ahora = datetime.now(colombia_tz).time()
 
     if ahora >= datetime.strptime("06:00", "%H:%M").time() and ahora < datetime.strptime("12:00", "%H:%M").time():
         return "Mañana"

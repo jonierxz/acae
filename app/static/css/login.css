@@ -29,9 +29,26 @@ body {
     text-align: center;
 }
 
+.register-container {
+    background-color: var(--container-bg-color);
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 450px;
+    text-align: center;
+    min-height: 700px;
+}
+
 .logo {
     width: 180px;
     margin-bottom: 10px;
+}
+
+.logo-register {
+    width: 180px;
+    margin-bottom: 15px;
+    margin-top: 5px;
 }
 
 h1 {
